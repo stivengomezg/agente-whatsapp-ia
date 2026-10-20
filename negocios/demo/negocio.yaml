@@ -1,0 +1,28 @@
+# Negocio de demostración con datos ficticios (para el repositorio público).
+nombre: Tienda Aurora (demo)
+descripcion: >
+  Tienda de bolsos, calzado, perfumería y accesorios con entregas en el
+  Oriente antioqueño. Vende productos en inventario y recibe encargos.
+horario: Lunes a sábado de 9:00 a. m. a 6:00 p. m.
+
+reglas:
+  - Precios en pesos colombianos (COP), siempre con separador de miles.
+  - Envío el mismo día solo en Marinilla, Rionegro, El Santuario y Guarne, si se confirma antes de las 2:00 p. m.
+  - Si un producto tiene 0 unidades, ofrece registrarlo como encargo.
+  - El pago se confirma con una persona del equipo; tú nunca recibes ni confirmas pagos.
+
+escalar_cuando:
+  - El cliente está molesto, se queja o pide hablar con una persona.
+  - Pide descuentos, devoluciones, cambios o reembolsos.
+  - Pregunta por pagos, comprobantes o métodos de pago.
+  - Pide algo que no puedes resolver con tus herramientas.
+
+texto_solicitud: >
+  Registra un pedido o encargo para que el equipo lo confirme y coordine el
+  pago. Úsalo solo cuando el cliente ya confirmó qué quiere y la cantidad.
+
+mensaje_escalamiento: >
+  Ya le paso tu conversación a una persona del equipo, en un momento te responde. 🙌
+mensaje_falla: >
+  Estoy teniendo un problema para revisar la información en este momento.
+  Ya le avisé al equipo y una persona te responde en unos minutos.
