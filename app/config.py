@@ -3,6 +3,14 @@ import os
 
 from dotenv import load_dotenv
 
+
+def url_postgres(url: str) -> str:
+    """Railway y Supabase entregan postgres:// o postgresql://; SQLAlchemy necesita el driver."""
+    for prefijo in ("postgres://", "postgresql://"):
+        if url.startswith(prefijo):
+            return "postgresql+psycopg://" + url[len(prefijo):]
+    return url
+
 load_dotenv()
 
 NEGOCIO = os.getenv("NEGOCIO", "demo")
@@ -15,10 +23,10 @@ MAX_RONDAS_HERRAMIENTAS = int(os.getenv("MAX_RONDAS_HERRAMIENTAS", "6"))
 MENSAJES_EN_CONTEXTO = int(os.getenv("MENSAJES_EN_CONTEXTO", "12"))
 
 # --- Base PROPIA del agente (memoria, solicitudes, métricas). Nunca la del negocio. ---
-AGENTE_DB_URL = os.getenv("AGENTE_DB_URL", "sqlite:///agente.db")
+AGENTE_DB_URL = url_postgres(os.getenv("AGENTE_DB_URL", "sqlite:///agente.db"))
 
 # --- Conexión de SOLO LECTURA al negocio (la usa el conector de cada negocio) ---
-CONECTOR_DB_URL = os.getenv("CONECTOR_DB_URL", "")
+CONECTOR_DB_URL = url_postgres(os.getenv("CONECTOR_DB_URL", ""))
 
 # --- Panel web para el negocio ---
 PANEL_USUARIO = os.getenv("PANEL_USUARIO", "admin")

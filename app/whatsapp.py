@@ -27,12 +27,14 @@ from app import config
 from app.agente import Agente
 from app.avisos import alertar_desarrollador
 from app.panel import router as router_panel
+from app.probar import router as router_probar
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("agente.whatsapp")
 
 app = FastAPI(title="Agente de WhatsApp")
 app.include_router(router_panel)
+app.include_router(router_probar)
 _agente: Agente | None = None
 
 # Meta reintenta si no respondemos rápido: se ignoran ids ya procesados.
@@ -174,6 +176,16 @@ def cambiar_servicio(cambio: CambioServicio) -> dict:
 def devolver(telefono: str) -> dict:
     agente().devolver_al_agente(telefono)
     return {"ok": True, "telefono": telefono}
+
+
+@app.get("/licencia/asistente")
+def licencia_asistente() -> dict:
+    """La consulta el asistente que vive dentro de la app del negocio (ASISTENTE_LICENCIA_URL).
+
+    Pausar el bot de WhatsApp desde el panel no apaga el asistente de la
+    app; suspender el servicio o que venza la prueba sí.
+    """
+    return {"activo": agente().almacen.estado_servicio() not in ("suspendido", "prueba_vencida")}
 
 
 @app.get("/salud")

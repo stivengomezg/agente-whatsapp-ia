@@ -49,6 +49,7 @@ flowchart TD
 | Memoria larga | `almacen.memoria` | Resumen de máximo 4 frases por cliente, escrito por un modelo más barato solo cuando hubo algo relevante |
 | Escalado a humanos | `escalar_a_humano` + panel | Pausa el bot, avisa al equipo con un resumen y espera a que una persona devuelva la conversación |
 | Panel | `app/panel.py` | El negocio ve solicitudes, conversaciones escaladas y métricas, y puede pausar el agente |
+| Chat de prueba | `app/probar.py` | El negocio conversa con el agente desde el navegador con sus datos reales; lo que pasa ahí va a una base temporal y no afecta WhatsApp |
 | Interruptor | `/admin/servicio` | El proveedor suspende el servicio o fija la fecha de fin de una prueba |
 | Reglas | `negocios/<negocio>/negocio.yaml` | Lo que aprueba el dueño del negocio: reglas, cuándo escalar, mensajes fijos |
 
@@ -76,7 +77,7 @@ Servidor con WhatsApp y panel:
 
 ```bash
 uvicorn app.whatsapp:app --port 8000
-# Webhook en Meta: https://<tu-dominio>/webhook   ·   Panel: https://<tu-dominio>/panel
+# Webhook en Meta: https://<tu-dominio>/webhook   ·   Panel: https://<tu-dominio>/panel   ·   Chat de prueba: /panel/probar
 ```
 
 Suspender o fijar una prueba (proveedor):
@@ -96,6 +97,15 @@ python evals/correr.py        # 14 casos con el modelo real: normales, difícile
 ```
 
 Las pruebas usan un modelo falso con guion para verificar la orquestación de forma determinística. Las evaluaciones se corren antes de cada cambio de reglas, prompt o modelo y guardan el detalle en `evals/resultados_*.json`.
+
+### Resultados y lo que encontraron las evaluaciones
+
+**Resultado actual: 14/14 casos** con Claude Sonnet 5.5, incluidos los 3 intentos de *prompt injection*.
+
+La primera corrida dio 13/14, y el caso que falló destapó dos problemas que las pruebas unitarias no veían:
+
+1. **Error de la API en conversaciones de varios mensajes.** Las instrucciones incluían la hora y la memoria del cliente, que cambian entre mensajes. El modelo devuelve su razonamiento interno ligado a las instrucciones con que lo creó, así que en el segundo mensaje la API lo rechazaba. **Arreglo:** instrucciones fijas en un bloque con caché, contexto variable en otro bloque calculado una vez por mensaje, y sin reenviar el razonamiento de turnos anteriores. Además bajó el costo por mensaje. Quedó cubierto con una prueba que reproduce el caso.
+2. **Escalado innecesario.** Tras registrar una solicitud, el agente también escalaba la conversación, lo que pausaba el bot sin necesidad. **Arreglo:** una regla explícita, y la evaluación ahora revisa la conversación completa en vez de solo el último mensaje.
 
 ## Agregar un negocio
 

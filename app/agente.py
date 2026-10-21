@@ -40,6 +40,7 @@ class Agente:
             llm = llm or ChatAnthropic(model=config.MODELO, max_tokens=1024, timeout=30, max_retries=2)
             llm_rapido = llm_rapido or ChatAnthropic(model=config.MODELO_RAPIDO, max_tokens=400,
                                                      timeout=20, max_retries=2)
+        self.llm, self.llm_rapido = llm, llm_rapido
         self.grafo = construir_grafo(self.negocio, self.almacen, llm, llm_rapido, checkpointer)
 
     def responder(self, telefono: str, texto: str) -> Resultado:

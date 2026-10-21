@@ -123,7 +123,7 @@ def panel(_: str = Depends(_usuario)) -> str:
     return f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Agente · {escape(negocio.nombre)}</title>
 <style>{ESTILOS}</style></head><body><main>
-<h1>Agente de WhatsApp</h1><p class="sub">{escape(negocio.nombre)}</p>
+<h1>Agente de WhatsApp</h1><p class="sub">{escape(negocio.nombre)} · <a href="/panel/probar">Probar el agente</a></p>
 <div class="estado"><div><span class="punto {clase}"></span>{escape(texto)}</div>{accion}</div>
 <h2>Esperando a una persona ({len(escalados)})</h2><div class="lista">{html_escalados}</div>
 <h2>Solicitudes por revisar ({len(solicitudes)})</h2><div class="lista">{html_solicitudes}</div>

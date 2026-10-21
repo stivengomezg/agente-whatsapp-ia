@@ -163,3 +163,67 @@ def test_panel_gestiona_solicitudes_y_escalamientos(cliente):
     assert a.listar_solicitudes() == []
     cliente.post("/panel/escalamientos/3001112233/devolver", data={"token": token}, auth=DUENA)
     assert a.escalamientos_abiertos() == []
+
+
+# ---------------- chat de prueba en el panel ----------------
+
+@pytest.fixture
+def cliente_prueba(monkeypatch):
+    """Servidor con el agente real (conector de demo) y un modelo falso."""
+    from app.agente import Agente
+    from app import probar
+    from tests.fakes import decir, llamar, modelo
+
+    for clave, valor in {"PANEL_USUARIO": DUENA[0], "PANEL_CLAVE": DUENA[1], "ADMIN_TOKEN": "admin"}.items():
+        monkeypatch.setattr(config, clave, valor)
+    principal = Agente(cargar_negocio("demo"), Almacen("sqlite://"),
+                       llm=modelo(llamar("escalar_a_humano", motivo="descuento", resumen="Pide descuento"),
+                                  decir("¡Hola!")),
+                       llm_rapido=modelo())
+    monkeypatch.setattr(whatsapp, "_agente", principal)
+    monkeypatch.setattr(probar, "_prueba", None)
+    c = TestClient(whatsapp.app)
+    c.principal = principal
+    return c
+
+
+def test_chat_de_prueba_exige_login_y_token(cliente_prueba):
+    assert cliente_prueba.get("/panel/probar").status_code == 401
+    assert "Probar el agente" in cliente_prueba.get("/panel/probar", auth=DUENA).text
+    r = cliente_prueba.post("/panel/probar/mensaje", json={"telefono": "3000000001", "texto": "hola"},
+                            auth=DUENA, headers={"X-Token": "falso"})
+    assert r.status_code == 403
+
+
+def test_chat_de_prueba_no_toca_la_base_real(cliente_prueba):
+    token = {"X-Token": panel._token_formulario()}
+    r = cliente_prueba.post("/panel/probar/mensaje", json={"telefono": "3000000001", "texto": "Quiero descuento"},
+                            auth=DUENA, headers=token)
+    assert r.json()["estado"] == "escalado"
+    # El escalamiento quedó en la base de prueba, no en la real: WhatsApp sigue atendiendo a esa clienta
+    assert cliente_prueba.principal.almacen.escalamientos_abiertos() == []
+    assert cliente_prueba.principal.almacen.estado_servicio() == "activo"
+
+    r = cliente_prueba.post("/panel/probar/mensaje", json={"telefono": "3000000001", "texto": "/devolver"},
+                            auth=DUENA, headers=token)
+    assert r.json()["estado"] == "devuelto"
+    r = cliente_prueba.post("/panel/probar/mensaje", json={"telefono": "3000000001", "texto": "Hola"},
+                            auth=DUENA, headers=token)
+    assert r.json()["respuesta"] == "¡Hola!"
+
+
+def test_chat_de_prueba_se_apaga_si_el_servicio_esta_suspendido(cliente_prueba):
+    cliente_prueba.principal.almacen.guardar_ajuste("suspendido", "si")
+    r = cliente_prueba.post("/panel/probar/mensaje", json={"telefono": "3000000001", "texto": "hola"},
+                            auth=DUENA, headers={"X-Token": panel._token_formulario()})
+    assert r.status_code == 403
+
+
+def test_licencia_del_asistente_sigue_al_interruptor_del_proveedor(cliente):
+    assert cliente.get("/licencia/asistente").json() == {"activo": True}
+    cliente.almacen.guardar_ajuste("pausado", "si")          # pausar el bot no apaga el asistente
+    assert cliente.get("/licencia/asistente").json() == {"activo": True}
+    cliente.post("/admin/servicio", json={"suspendido": True}, headers=PROVEEDOR)
+    assert cliente.get("/licencia/asistente").json() == {"activo": False}
+    cliente.post("/admin/servicio", json={"suspendido": False, "prueba_hasta": "2000-01-01"}, headers=PROVEEDOR)
+    assert cliente.get("/licencia/asistente").json() == {"activo": False}
